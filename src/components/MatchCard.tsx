@@ -1,7 +1,12 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { formatMatchStart, getMatchStatus, Match, Team } from '../models/matches';
+import { FavoriteButton } from './FavoriteButton';
 
-type Props = { match: Match };
+type Props = {
+  match: Match;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
+};
 
 function TeamRow({ team, role, score }: { team: Team; role: string; score?: number }) {
   return (
@@ -17,7 +22,7 @@ function TeamRow({ team, role, score }: { team: Team; role: string; score?: numb
   );
 }
 
-export function MatchCard({ match }: Props) {
+export function MatchCard({ match, isFavorite, onToggleFavorite }: Props) {
   const live = match.status === 'live';
 
   return (
@@ -25,6 +30,7 @@ export function MatchCard({ match }: Props) {
       <View style={styles.meta}>
         <Text style={styles.date}>{formatMatchStart(match.startsAt)}</Text>
         <Text style={[styles.status, live && styles.live]}>{getMatchStatus(match)}</Text>
+        <FavoriteButton active={isFavorite} onPress={onToggleFavorite} />
       </View>
       <TeamRow team={match.home} role="Хозяева" score={match.score?.home} />
       <View style={styles.divider} />

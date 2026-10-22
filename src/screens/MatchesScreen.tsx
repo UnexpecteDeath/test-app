@@ -3,6 +3,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MatchCard } from '../components/MatchCard';
 import { MatchesSkeleton } from '../components/MatchesSkeleton';
 import { UpdatedAgo } from '../components/UpdatedAgo';
+import { useFavorites } from '../hooks/useFavorites';
 import { useMatches } from '../hooks/useMatches';
 import { filterMatches, MatchFilter } from '../models/matches';
 
@@ -14,6 +15,7 @@ const FILTERS: { value: MatchFilter; label: string }[] = [
 
 export function MatchesScreen() {
   const { data, loading, error, updatedAt, reload } = useMatches();
+  const { favorites, isFavorite, toggle } = useFavorites();
   const [filter, setFilter] = useState<MatchFilter>('all');
   const matches = filterMatches(data?.matches ?? [], filter);
 
@@ -58,8 +60,15 @@ export function MatchesScreen() {
 
         <FlatList
           data={matches}
+          extraData={favorites}
           keyExtractor={(match) => match.id}
-          renderItem={({ item }) => <MatchCard match={item} />}
+          renderItem={({ item }) => (
+            <MatchCard
+              match={item}
+              isFavorite={isFavorite(item.id)}
+              onToggleFavorite={() => toggle(item.id)}
+            />
+          )}
           contentContainerStyle={styles.list}
           ListHeaderComponent={error ? (
             <View style={styles.error}>

@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Input } from '../components/Input';
 import { MatchCard } from '../components/MatchCard';
 import { MatchesSkeleton } from '../components/MatchesSkeleton';
 import { UpdatedAgo } from '../components/UpdatedAgo';
+import { useDebounce } from '../hooks/useDebounce';
 import { useFavorites } from '../hooks/useFavorites';
 import { useMatches } from '../hooks/useMatches';
 import { filterMatches, MatchFilter } from '../models/matches';
@@ -17,7 +19,13 @@ export function MatchesScreen() {
   const { data, loading, error, updatedAt, reload } = useMatches();
   const { favorites, isFavorite, toggle } = useFavorites();
   const [filter, setFilter] = useState<MatchFilter>('all');
-  const matches = filterMatches(data?.matches ?? [], filter);
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedQuery = useDebounce(searchQuery);
+  const hasSearchQuery = debouncedQuery.trim().length > 0;
+  const matches = useMemo(
+    () => filterMatches(data?.matches ?? [], filter, debouncedQuery),
+    [data, filter, debouncedQuery],
+  );
 
   return (
     <View style={styles.container}>
@@ -44,6 +52,17 @@ export function MatchesScreen() {
           {updatedAt && <UpdatedAgo since={updatedAt} />}
         </View>
 
+        <Input
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Поиск по названию команды"
+          accessibilityLabel="Поиск по названию команды"
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="search"
+          style={styles.search}
+        />
+
         <View accessibilityRole="tablist" style={styles.filters}>
           {FILTERS.map(({ value, label }) => (
             <Pressable
@@ -60,6 +79,8 @@ export function MatchesScreen() {
 
         <FlatList
           data={matches}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           extraData={favorites}
           keyExtractor={(match) => match.id}
           renderItem={({ item }) => (
@@ -89,12 +110,16 @@ export function MatchesScreen() {
           ListEmptyComponent={loading && !data ? <MatchesSkeleton /> : !error ? (
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>
-                {data?.matches.length === 0 ? 'Матчей пока нет' : 'В этой категории матчей нет'}
+                {data?.matches.length === 0
+                  ? 'Матчей пока нет'
+                  : hasSearchQuery ? 'Ничего не найдено' : 'В этой категории матчей нет'}
               </Text>
               <Text style={styles.emptyText}>
                 {data?.matches.length === 0
                   ? 'Расписание появится здесь. Попробуйте обновить данные позже.'
-                  : 'Выберите другой фильтр или обновите данные.'}
+                  : hasSearchQuery
+                    ? 'Попробуйте другое название команды или выберите другой фильтр.'
+                    : 'Выберите другой фильтр или обновите данные.'}
               </Text>
             </View>
           ) : null}
@@ -116,6 +141,7 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.5 },
   pressed: { opacity: 0.7 },
   updated: { minHeight: 32, justifyContent: 'center', marginTop: 6 },
+  search: { marginTop: 8, marginBottom: 8 },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6, marginBottom: 18 },
   filter: { minHeight: 44, paddingHorizontal: 12, justifyContent: 'center', borderRadius: 10, backgroundColor: '#e9eef3' },
   activeFilter: { backgroundColor: '#172033' },

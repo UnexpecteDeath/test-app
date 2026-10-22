@@ -21,14 +21,23 @@ export type MatchesResponse = {
 
 export type MatchFilter = 'all' | 'upcoming' | 'finished';
 
-export function filterMatches(matches: Match[], filter: MatchFilter): Match[] {
-  if (filter === 'upcoming') {
-    return matches.filter(({ status }) => status === 'scheduled' || status === 'postponed');
-  }
-  if (filter === 'finished') {
-    return matches.filter(({ status }) => status === 'finished');
-  }
-  return matches;
+function normalizeSearch(value: string): string {
+  return value.trim().toLocaleLowerCase('ru-RU').replace(/ё/g, 'е').replace(/\s+/g, ' ');
+}
+
+export function filterMatches(matches: Match[], filter: MatchFilter, search = ''): Match[] {
+  const query = normalizeSearch(search);
+
+  return matches.filter((match) => {
+    const matchesStatus = filter === 'all'
+      || (filter === 'upcoming' && (match.status === 'scheduled' || match.status === 'postponed'))
+      || (filter === 'finished' && match.status === 'finished');
+    const matchesSearch = query.length === 0
+      || normalizeSearch(match.home.name).includes(query)
+      || normalizeSearch(match.away.name).includes(query);
+
+    return matchesStatus && matchesSearch;
+  });
 }
 
 export function getMatchStatus(match: Match): string {

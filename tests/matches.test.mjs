@@ -41,6 +41,30 @@ test('идущие, отменённые и неизвестные матчи о
   assert.equal(getMatchStatus(matches[2]), 'Статус уточняется');
 });
 
+test('поиск находит хозяев и гостей по части названия без учёта регистра', () => {
+  const { matches } = parseMatchesResponse(fixture);
+  assert.deepEqual(filterMatches(matches, 'all', '  зЕнИт ').map(({ id }) => id), ['m1']);
+  assert.deepEqual(filterMatches(matches, 'all', 'спарт').map(({ id }) => id), ['m1']);
+  assert.deepEqual(filterMatches(matches, 'all', 'ДИНАМО').map(({ id }) => id), ['m4', 'm8']);
+});
+
+test('пробелы не ограничивают список, буквы е/ё и повторные пробелы равнозначны', () => {
+  const { matches } = parseMatchesResponse(fixture);
+  assert.equal(filterMatches(matches, 'all', '   ').length, 8);
+  assert.deepEqual(filterMatches(matches, 'all', 'пари   нижний').map(({ id }) => id), ['m5']);
+  const withYo = [{ ...matches[0], home: { ...matches[0].home, name: 'Орёл' } }];
+  assert.equal(filterMatches(withYo, 'all', 'орел').length, 1);
+  assert.equal(filterMatches(matches, 'all', '').length, 8);
+});
+
+test('поиск сочетается со статусом и возвращает пустой список без совпадений', () => {
+  const { matches } = parseMatchesResponse(fixture);
+  assert.deepEqual(filterMatches(matches, 'upcoming', 'динамо').map(({ id }) => id), ['m8']);
+  assert.deepEqual(filterMatches(matches, 'finished', 'динамо'), []);
+  assert.deepEqual(filterMatches(matches, 'all', 'несуществующий клуб'), []);
+  assert.equal(matches.length, 8);
+});
+
 test('пустой ответ корректен; повреждённый ответ и повторяющиеся id — ошибка', () => {
   assert.deepEqual(parseMatchesResponse({ round: 12, matches: [] }).matches, []);
   for (const value of [null, {}, { round: 12, matches: {} }, {
